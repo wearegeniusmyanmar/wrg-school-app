@@ -383,7 +383,7 @@ if not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.role = "Admin"
                     st.rerun()
-                elif role_choice == "Teacher (ဆရာ/မ)" and password == "wrg2020":
+                elif role_choice == "Teacher (ဆရာ/မ)" and password == "Wrg7799332211":
                     st.session_state.logged_in = True
                     st.session_state.role = "Teacher"
                     st.rerun()

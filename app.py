@@ -493,7 +493,7 @@ if st.session_state.role == "Admin":
             with c1:
                 in_date = st.date_input("ရက်စွဲ (Date)", date.today(), key="adm_in_date").strftime("%Y-%m-%d")
                 in_type = st.selectbox("ကျောင်းအမျိုးအစား", CLASS_TYPES, key="adm_in_type")
-                in_class = st.text_input("တန်းခွဲ (ဥပမာ - Grade-10 (A))", key="adm_in_class")
+                in_class = st.text_input("တန်းခွဲ (ဥပမာ - WRG 26_01 (Tue_Wed:6-7)", key="adm_in_class")
                 in_period = st.text_input("စာသင်ချိန် (ဥပမာ - 9:00 AM - 10:30 AM)", key="adm_in_period")
             with c2:
                 in_zoom = st.text_input("Zoom ID / Link", key="adm_in_zoom")

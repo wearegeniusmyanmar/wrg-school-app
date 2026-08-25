@@ -502,37 +502,103 @@ else:
 tabs = st.tabs(tab_names)
 
 # =========================================================
-# TAB 1 - VIEW TIMETABLE
+# TAB 1 - VIEW TIMETABLE (WITH CLASS NAME FILTER)
 # =========================================================
 with tabs[0]:
     st.subheader("🔍 အပတ်စဉ် အချိန်ဇယား ရှာဖွေကြည့်ရှုရန်")
-    c1, c2, c3, c4 = st.columns(4)
+
+    # Dropdown Filter များကို Column ၅ ခုဖြင့် နေရာချထားခြင်း
+    c1, c2, c3, c4, c5 = st.columns(5)
+
     with c1:
         view_type = st.selectbox("ကျောင်းအမျိုးအစား", ["အားလုံး"] + CLASS_TYPES, key="v_t_filter")
+
     with c2:
-        t_df = run_query("SELECT DISTINCT teacher_name FROM teachers WHERE teacher_name IS NOT NULL ORDER BY teacher_name")
-        view_t = st.selectbox("ဆရာ/မ အမည်", ["အားလုံး"] + t_df["teacher_name"].tolist(), key="v_t_name")
+        # ရွေးထားသော ကျောင်းအမျိုးအစားအလိုက် Class Name များကို Query လုပ်ခြင်း
+        if view_type != "အားလုံး":
+            class_filter_df = run_query(
+                """
+                SELECT DISTINCT class_name AS "Class_Name" 
+                FROM timetable 
+                WHERE class_type = %s AND class_name IS NOT NULL 
+                ORDER BY class_name
+                """,
+                (view_type,),
+            )
+        else:
+            class_filter_df = run_query(
+                """
+                SELECT DISTINCT class_name AS "Class_Name" 
+                FROM timetable 
+                WHERE class_name IS NOT NULL 
+                ORDER BY class_name
+                """
+            )
+        class_names = class_filter_df["Class_Name"].dropna().astype(str).tolist()
+        view_c = st.selectbox("တန်းခွဲ (Class Name)", ["အားလုံး"] + class_names, key="v_c_name")
+
     with c3:
-        start_w = st.date_input("စတင်မည့်ရက်", date.today() - timedelta(days=date.today().weekday()), key="v_s_date")
+        teacher_filter_df = run_query(
+            """
+            SELECT DISTINCT teacher_name AS "Teacher_Name" 
+            FROM teachers 
+            WHERE teacher_name IS NOT NULL 
+            ORDER BY teacher_name
+            """
+        )
+        teacher_names = teacher_filter_df["Teacher_Name"].dropna().astype(str).tolist()
+        t_list = ["အားလုံး"] + teacher_names
+        view_t = st.selectbox("ဆရာ/မ အမည်", t_list, key="v_t_name")
+
     with c4:
+        start_w = st.date_input(
+            "စတင်မည့်ရက်",
+            date.today() - timedelta(days=date.today().weekday()),
+            key="v_s_date",
+        )
+
+    with c5:
         end_w = st.date_input("ပြီးဆုံးမည့်ရက်", start_w + timedelta(days=6), key="v_e_date")
 
-    q = "SELECT date AS \"Date\", class_type AS \"Class_Type\", class_name AS \"Class_Name\", period AS \"Period\", zoom_id AS \"Zoom_ID\", teacher_name AS \"Teacher_Name\", assistant_1 AS \"Assistant_1\", assistant_2 AS \"Assistant_2\", lesson_level AS \"Lesson_Level\", lesson_topic AS \"Lesson_Topic\" FROM timetable WHERE date BETWEEN %s AND %s"
+    # Database Query တည်ဆောက်ခြင်း
+    q = """
+        SELECT 
+            date AS "Date", 
+            class_type AS "Class_Type", 
+            class_name AS "Class_Name", 
+            period AS "Period", 
+            zoom_id AS "Zoom_ID", 
+            teacher_name AS "Teacher_Name", 
+            assistant_1 AS "Assistant_1", 
+            assistant_2 AS "Assistant_2", 
+            lesson_level AS "Lesson_Level", 
+            lesson_topic AS "Lesson_Topic" 
+        FROM timetable 
+        WHERE date BETWEEN %s AND %s
+    """
     p = [start_w.strftime("%Y-%m-%d"), end_w.strftime("%Y-%m-%d")]
+
     if view_type != "အားလုံး":
         q += " AND class_type = %s"
         p.append(view_type)
+
+    # Class Name Filter ထည့်သွင်းခြင်း
+    if view_c != "အားလုံး":
+        q += " AND class_name = %s"
+        p.append(view_c)
+
     if view_t != "အားလုံး":
         q += " AND (teacher_name = %s OR assistant_1 = %s OR assistant_2 = %s)"
         p.extend([view_t, view_t, view_t])
+
     q += " ORDER BY date ASC, period ASC"
 
     res = run_query(q, tuple(p))
+
     if not res.empty:
         st.dataframe(res, use_container_width=True, hide_index=True)
     else:
-        st.info("ရွေးချယ်ထားသော ရက်အတွင်း အချိန်ဇယား မရှိသေးပါ။")
-
+        st.info("ရွေးချယ်ထားသော အချက်အလက်များနှင့် ကိုက်ညီသည့် အချိန်ဇယား မရှိသေးပါ။")
 # =========================================================
 # ADMIN ONLY TABS
 # =========================================================

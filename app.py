@@ -136,28 +136,6 @@ html, body, [class*="css"] {
     color: #64748b;
 }
 
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    background-color: #ffffff;
-    padding: 6px;
-    border-radius: 14px;
-    border: 1px solid rgba(16, 185, 129, 0.2);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-}
-
-.stTabs [data-baseweb="tab"] {
-    border-radius: 10px;
-    color: #64748b;
-    font-weight: 600;
-    padding: 8px 18px;
-}
-
-.stTabs [aria-selected="true"] {
-    background-color: #10b981 !important;
-    color: #ffffff !important;
-    font-weight: 700;
-}
-
 .stTextInput input,
 .stSelectbox select,
 .stDateInput input {
@@ -209,7 +187,7 @@ CLASS_TYPES = [
 ]
 
 # =========================================================
-# DATABASE CONNECTION & POOLING (SPEED OPTIMIZATION)
+# DATABASE CONNECTION & POOLING
 # =========================================================
 @st.cache_resource
 def get_db_pool():
@@ -226,7 +204,7 @@ def release_conn(conn):
     get_db_pool().putconn(conn)
 
 # =========================================================
-# DATABASE SETUP (CACHED ONE-TIME INITIALIZATION)
+# DATABASE SETUP (CACHED ONE-TIME STARTUP)
 # =========================================================
 def init_db():
     conn = get_conn()
@@ -393,9 +371,9 @@ def verify_password(password, stored_hash):
         return False
 
 # =========================================================
-# DATABASE HELPERS (WITH DATA CACHE)
+# DATABASE HELPERS
 # =========================================================
-@st.cache_data(ttl=10, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def run_query(query, params=()):
     conn = get_conn()
     try:
@@ -436,18 +414,7 @@ def authenticate_user(username, password, role):
     return verify_password(password, df.iloc[0]["password_hash"])
 
 # =========================================================
-# NOTIFICATION POPUP (ORIGINAL DIALOG)
-# =========================================================
-@st.dialog("🔔 အသိပေးချက်")
-def show_popup(message, details=""):
-    st.success(message)
-    if details:
-        st.info(details)
-    if st.button("အိုကေ (OK)", type="primary", use_container_width=True):
-        st.rerun()
-
-# =========================================================
-# EDIT TIMETABLE DIALOG
+# EDIT DIALOGS
 # =========================================================
 @st.dialog("✏️ အချိန်ဇယား ပြင်ဆင်ရန်")
 def edit_timetable_dialog(row_id):
@@ -550,15 +517,13 @@ def edit_timetable_dialog(row_id):
                     ),
                 )
                 run_query.clear()
+                st.toast("✅ ပြင်ဆင်မှု သိမ်းဆည်းပြီးပါပြီ!", icon="🎉")
                 st.rerun()
             except psycopg2.IntegrityError:
                 st.error("ယခု ရက်စွဲ၊ အတန်းနှင့် စာသင်ချိန်အတွက် အချိန်ဇယား ရှိပြီးသားဖြစ်နေပါသည်။")
         else:
             st.error("Teacher, Level နှင့် Lesson အချက်အလက်များ မပြည့်စုံပါ။")
 
-# =========================================================
-# EDIT STUDENT DIALOG
-# =========================================================
 @st.dialog("✏️ ကျောင်းသား အချက်အလက် ပြင်ဆင်ရန်")
 def edit_student_dialog(row_id):
     row_df = run_query(
@@ -631,13 +596,11 @@ def edit_student_dialog(row_id):
                     ),
                 )
                 run_query.clear()
+                st.toast("✅ ကျောင်းသား အချက်အလက် ပြင်ဆင်ပြီးပါပြီ!", icon="🎉")
                 st.rerun()
             except psycopg2.IntegrityError:
                 st.error("ဤအတန်းတွင် ယခုအမည်ဖြင့် ကျောင်းသား ရှိပြီးသားဖြစ်နေပါသည်။")
 
-# =========================================================
-# EDIT TEACHER DIALOG
-# =========================================================
 @st.dialog("✏️ ဆရာ/မ အချက်အလက် ပြင်ဆင်ရန်")
 def edit_teacher_dialog(row_id):
     row_df = run_query(
@@ -665,13 +628,11 @@ def edit_teacher_dialog(row_id):
                     (e_name, e_phone, row_id),
                 )
                 run_query.clear()
+                st.toast("✅ ဆရာ/မ အချက်အလက် ပြင်ဆင်ပြီးပါပြီ!", icon="🎉")
                 st.rerun()
             except psycopg2.IntegrityError:
                 st.error("ဤဆရာ/မ အမည် ရှိပြီးသားဖြစ်နေပါသည်။")
 
-# =========================================================
-# EDIT LESSON DIALOG
-# =========================================================
 @st.dialog("✏️ သင်ခန်းစာ ပြင်ဆင်ရန်")
 def edit_lesson_dialog(row_id):
     row_df = run_query(
@@ -696,6 +657,7 @@ def edit_lesson_dialog(row_id):
                     (e_lvl.strip(), e_top.strip(), row_id),
                 )
                 run_query.clear()
+                st.toast("✅ သင်ခန်းစာ ပြင်ဆင်ပြီးပါပြီ!", icon="🎉")
                 st.rerun()
             except psycopg2.IntegrityError:
                 st.error("ဤ Level တွင် ယခုသင်ခန်းစာ ရှိပြီးသားဖြစ်နေပါသည်။")
@@ -770,7 +732,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # =========================================================
-# SIDEBAR
+# SIDEBAR NAVIGATION (OPTIMIZATION: PREVENT BACKGROUND TABS QUERY)
 # =========================================================
 with st.sidebar:
     if os.path.exists("logo.png"):
@@ -780,10 +742,37 @@ with st.sidebar:
     st.caption("Basic Science School")
     st.success(f"👤 Role: **{st.session_state.role}**")
 
+    if st.session_state.role == "Admin":
+        menu_options = [
+            "📅 အပတ်စဉ် အချိန်ဇယား ရှာဖွေရန်",
+            "➕ အချိန်ဇယား ရေးဆွဲ/စီမံရန်",
+            "👥 ကျောင်းသား စီမံခန့်ခွဲမှု",
+            "📋 နေ့စဉ် ကျောင်းခေါ်ချိန် မှတ်တမ်း",
+            "📊 အင်အားနှင့် တက်/ပျက် စာရင်းချုပ်",
+            "👨‍🏫 ဆရာ/မ စာရင်း စီမံရန်",
+            "📖 သင်ခန်းစာများ စီမံရန်",
+            "📈 Analytics Dashboard",
+            "🔐 User Account စီမံရန်",
+        ]
+    else:
+        menu_options = [
+            "📅 အပတ်စဉ် အချိန်ဇယား ရှာဖွေရန်",
+            "📋 နေ့စဉ် ကျောင်းခေါ်ချိန် မှတ်တမ်း",
+            "📊 အင်အားနှင့် တက်/ပျက် စာရင်းချုပ်",
+        ]
+
+    selected_menu = st.radio("📌 Navigation Menu", menu_options)
+    st.markdown("---")
+    if st.button("🚪 Logout (ထွက်မည်)", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.role = None
+        st.session_state.username = None
+        st.rerun()
+
 # =========================================================
 # HEADER
 # =========================================================
-h_col1, h_col2, h_col3 = st.columns([1, 6.5, 1.8])
+h_col1, h_col2 = st.columns([1, 8])
 with h_col1:
     if os.path.exists("logo.png"):
         st.image("logo.png", width=75)
@@ -810,43 +799,12 @@ with h_col2:
         """,
         unsafe_allow_html=True,
     )
-with h_col3:
-    if st.button("🚪 Logout (ထွက်မည်)", key="single_header_logout_btn", use_container_width=True):
-        st.session_state.logged_in = False
-        st.session_state.role = None
-        st.session_state.username = None
-        st.rerun()
-
 st.markdown("---")
 
 # =========================================================
-# TABS DECLARATION
+# VIEW 1: VIEW TIMETABLE
 # =========================================================
-if st.session_state.role == "Admin":
-    tab_names = [
-        "📅 အပတ်စဉ် အချိန်ဇယား ရှာဖွေရန်",
-        "➕ အချိန်ဇယား ရေးဆွဲ/စီမံရန်",
-        "👥 ကျောင်းသား စီမံခန့်ခွဲမှု",
-        "📋 နေ့စဉ် ကျောင်းခေါ်ချိန် မှတ်တမ်း",
-        "📊 အင်အားနှင့် တက်/ပျက် စာရင်းချုပ်",
-        "👨‍🏫 ဆရာ/မ စာရင်း စီမံရန်",
-        "📖 သင်ခန်းစာများ စီမံရန်",
-        "📈 Analytics Dashboard",
-        "🔐 User Account စီမံရန်",
-    ]
-else:
-    tab_names = [
-        "📅 အပတ်စဉ် အချိန်ဇယား ရှာဖွေရန်",
-        "📋 နေ့စဉ် ကျောင်းခေါ်ချိန် မှတ်တမ်း",
-        "📊 အင်အားနှင့် တက်/ပျက် စာရင်းချုပ်",
-    ]
-
-tabs = st.tabs(tab_names)
-
-# =========================================================
-# TAB 1 - VIEW TIMETABLE
-# =========================================================
-with tabs[0]:
+if selected_menu == "📅 အပတ်စဉ် အချိန်ဇယား ရှာဖွေရန်":
     st.subheader("🔍 အပတ်စဉ် အချိန်ဇယား ရှာဖွေကြည့်ရှုရန်")
 
     c1, c2, c3, c4 = st.columns(4)
@@ -903,31 +861,27 @@ with tabs[0]:
         st.info("ရွေးချယ်ထားသော ရက်အတွင်း အချိန်ဇယား မရှိသေးပါ။")
 
 # =========================================================
-# ADMIN ONLY TABS
+# VIEW 2: TIMETABLE MANAGEMENT (ADMIN)
 # =========================================================
-if st.session_state.role == "Admin":
+elif selected_menu == "➕ အချိန်ဇယား ရေးဆွဲ/စီမံရန်":
+    st.subheader("➕ အချိန်ဇယား အသစ်ထည့်သွင်းရန်")
 
-    # =====================================================
-    # TAB 2 - TIMETABLE MANAGEMENT
-    # =====================================================
-    with tabs[1]:
-        st.subheader("➕ အချိန်ဇယား အသစ်ထည့်သွင်းရန်")
+    teachers_df = run_query(
+        "SELECT teacher_name AS \"Teacher_Name\" FROM teachers ORDER BY teacher_name"
+    )
+    teachers = teachers_df["Teacher_Name"].dropna().astype(str).tolist()
 
-        teachers_df = run_query(
-            "SELECT teacher_name AS \"Teacher_Name\" FROM teachers ORDER BY teacher_name"
+    levels_df = run_query(
+        "SELECT DISTINCT level AS \"Level\" FROM lessons ORDER BY level"
+    )
+    levels_avail = levels_df["Level"].dropna().astype(str).tolist()
+
+    if not levels_avail:
+        st.warning(
+            "⚠️ သင်ခန်းစာ Level များ မရှိသေးပါ။ ဦးစွာ 'သင်ခန်းစာများ စီမံရန်' Menu တွင် သင်ခန်းစာများ ထည့်သွင်းပါ။"
         )
-        teachers = teachers_df["Teacher_Name"].dropna().astype(str).tolist()
-
-        levels_df = run_query(
-            "SELECT DISTINCT level AS \"Level\" FROM lessons ORDER BY level"
-        )
-        levels_avail = levels_df["Level"].dropna().astype(str).tolist()
-
-        if not levels_avail:
-            st.warning(
-                "⚠️ သင်ခန်းစာ Level များ မရှိသေးပါ။ ဦးစွာ 'သင်ခန်းစာများ စီမံရန်' Tab တွင် သင်ခန်းစာများ ထည့်သွင်းပါ။"
-            )
-        else:
+    else:
+        with st.form("adm_tt_form", clear_on_submit=True):
             c1, c2, c3 = st.columns(3)
             with c1:
                 in_date = st.date_input(
@@ -956,7 +910,7 @@ if st.session_state.role == "Admin":
                     key="adm_in_top",
                 )
 
-            if st.button("💾 အချိန်ဇယား သိမ်းဆည်းမည်", type="primary", key="adm_save_tt"):
+            if st.form_submit_button("💾 အချိန်ဇယား သိမ်းဆည်းမည်", type="primary"):
                 if (
                     in_class
                     and in_t != "ရွေးချယ်ပါ"
@@ -986,115 +940,115 @@ if st.session_state.role == "Admin":
                             ),
                         )
                         run_query.clear()
-                        show_popup("အချိန်ဇယား အသစ် ထည့်သွင်းပြီးပါပြီ!")
+                        st.toast("✅ အချိန်ဇယား အသစ် ထည့်သွင်းပြီးပါပြီ!", icon="🎉")
                     except psycopg2.IntegrityError:
                         st.error("ယခု ရက်စွဲ၊ အတန်းနှင့် စာသင်ချိန်အတွက် ရှိပြီးသားဖြစ်နေပါသည်။")
                 else:
                     st.warning("အချက်အလက်များကို ပြည့်စုံစွာ ဖြည့်ပေးပါ။")
 
-        # TIMETABLE EXCEL IMPORT
-        st.markdown("---")
-        st.subheader("📂 အချိန်ဇယား Excel မှ Import ပြုလုပ်ရန်")
-        up_tt = st.file_uploader(
-            "Excel တင်ရန် (Date, Class_Type, Class_Name, Period, Zoom_ID, Teacher_Name, Assistant_1, Assistant_2, Lesson_Level, Lesson_Topic)",
-            type=["xlsx", "xls"],
-            key="adm_up_tt",
-        )
+    # TIMETABLE EXCEL IMPORT
+    st.markdown("---")
+    st.subheader("📂 အချိန်ဇယား Excel မှ Import ပြုလုပ်ရန်")
+    up_tt = st.file_uploader(
+        "Excel တင်ရန် (Date, Class_Type, Class_Name, Period, Zoom_ID, Teacher_Name, Assistant_1, Assistant_2, Lesson_Level, Lesson_Topic)",
+        type=["xlsx", "xls"],
+        key="adm_up_tt",
+    )
 
-        if up_tt and st.button("📥 အချိန်ဇယား Import စတင်မည်"):
-            try:
-                imp_df = pd.read_excel(up_tt)
-                required = {
-                    "Date",
-                    "Class_Type",
-                    "Class_Name",
-                    "Period",
-                    "Teacher_Name",
-                    "Lesson_Level",
-                    "Lesson_Topic",
-                }
+    if up_tt and st.button("📥 အချိန်ဇယား Import စတင်မည်"):
+        try:
+            imp_df = pd.read_excel(up_tt)
+            required = {
+                "Date",
+                "Class_Type",
+                "Class_Name",
+                "Period",
+                "Teacher_Name",
+                "Lesson_Level",
+                "Lesson_Topic",
+            }
 
-                if required.issubset(set(imp_df.columns)):
-                    conn = get_conn()
-                    cur = conn.cursor()
-                    inserted = 0
-                    skipped = 0
+            if required.issubset(set(imp_df.columns)):
+                conn = get_conn()
+                cur = conn.cursor()
+                inserted = 0
+                skipped = 0
 
-                    for _, r in imp_df.iterrows():
-                        try:
-                            cur.execute(
-                                """
-                                INSERT INTO timetable (
-                                    date, class_type, class_name, period, zoom_id,
-                                    teacher_name, assistant_1, assistant_2, lesson_level, lesson_topic
-                                )
-                                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                                """,
-                                (
-                                    str(r["Date"]),
-                                    str(r["Class_Type"]),
-                                    str(r["Class_Name"]),
-                                    str(r["Period"]),
-                                    str(r["Zoom_ID"]) if pd.notna(r.get("Zoom_ID")) else None,
-                                    str(r["Teacher_Name"]),
-                                    str(r["Assistant_1"]) if pd.notna(r.get("Assistant_1")) else None,
-                                    str(r["Assistant_2"]) if pd.notna(r.get("Assistant_2")) else None,
-                                    str(r["Lesson_Level"]),
-                                    str(r["Lesson_Topic"]),
-                                ),
+                for _, r in imp_df.iterrows():
+                    try:
+                        cur.execute(
+                            """
+                            INSERT INTO timetable (
+                                date, class_type, class_name, period, zoom_id,
+                                teacher_name, assistant_1, assistant_2, lesson_level, lesson_topic
                             )
-                            inserted += 1
-                        except psycopg2.IntegrityError:
-                            conn.rollback()
-                            skipped += 1
+                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                            """,
+                            (
+                                str(r["Date"]),
+                                str(r["Class_Type"]),
+                                str(r["Class_Name"]),
+                                str(r["Period"]),
+                                str(r["Zoom_ID"]) if pd.notna(r.get("Zoom_ID")) else None,
+                                str(r["Teacher_Name"]),
+                                str(r["Assistant_1"]) if pd.notna(r.get("Assistant_1")) else None,
+                                str(r["Assistant_2"]) if pd.notna(r.get("Assistant_2")) else None,
+                                str(r["Lesson_Level"]),
+                                str(r["Lesson_Topic"]),
+                            ),
+                        )
+                        inserted += 1
+                    except psycopg2.IntegrityError:
+                        conn.rollback()
+                        skipped += 1
 
-                    conn.commit()
-                    cur.close()
-                    release_conn(conn)
-                    run_query.clear()
+                conn.commit()
+                cur.close()
+                release_conn(conn)
+                run_query.clear()
 
-                    show_popup(
-                        "အချိန်ဇယားများ Import ပြီးပါပြီ!",
-                        f"အသစ်ထည့်သွင်းမှု: {inserted} ခု | ထပ်နေ၍ ကျော်ခဲ့သည်: {skipped} ခု",
-                    )
-                else:
-                    st.error("Excel ကော်လံများ မမှန်ပါ။")
-            except Exception as e:
-                st.error(f"Error: {e}")
+                st.toast(f"✅ အချိန်ဇယားများ Import ပြီးပါပြီ! (အသစ်: {inserted} | ကျော်ခဲ့သည်: {skipped})", icon="🎉")
+                st.rerun()
+            else:
+                st.error("Excel ကော်လံများ မမှန်ပါ။")
+        except Exception as e:
+            st.error(f"Error: {e}")
 
-        # TIMETABLE LIST & EDIT
-        st.markdown("---")
-        st.subheader("📋 အချိန်ဇယားများ ပြင်ဆင်/ဖျက်ခြင်း")
+    # TIMETABLE LIST & EDIT
+    st.markdown("---")
+    st.subheader("📋 အချိန်ဇယားများ ပြင်ဆင်/ဖျက်ခြင်း")
 
-        tt_data = run_query(
-            """
-            SELECT
-                id, date AS "Date", class_type AS "Class_Type", class_name AS "Class_Name",
-                period AS "Period", zoom_id AS "Zoom_ID", teacher_name AS "Teacher_Name",
-                assistant_1 AS "Assistant_1", assistant_2 AS "Assistant_2",
-                lesson_level AS "Lesson_Level", lesson_topic AS "Lesson_Topic"
-            FROM timetable
-            ORDER BY date DESC, period ASC
-            """
+    tt_data = run_query(
+        """
+        SELECT
+            id, date AS "Date", class_type AS "Class_Type", class_name AS "Class_Name",
+            period AS "Period", zoom_id AS "Zoom_ID", teacher_name AS "Teacher_Name",
+            assistant_1 AS "Assistant_1", assistant_2 AS "Assistant_2",
+            lesson_level AS "Lesson_Level", lesson_topic AS "Lesson_Topic"
+        FROM timetable
+        ORDER BY date DESC, period ASC
+        """
+    )
+
+    if not tt_data.empty:
+        col_sa1, _ = st.columns([2, 8])
+        with col_sa1:
+            sel_all_tt = st.checkbox("☑️ အားလုံးရွေးမည်", key="chk_all_tt")
+
+        tt_data.insert(0, "Select", sel_all_tt)
+
+        edited_table = st.data_editor(
+            tt_data,
+            use_container_width=True,
+            hide_index=True,
+            key="tt_batch_edit",
+            disabled=[col for col in tt_data.columns if col != "Select"],
         )
 
-        if not tt_data.empty:
-            col_sa1, _ = st.columns([2, 8])
-            with col_sa1:
-                sel_all_tt = st.checkbox("☑️ အားလုံးရွေးမည်", key="chk_all_tt")
+        selected_ids = edited_table[edited_table["Select"] == True]["id"].tolist()
 
-            tt_data.insert(0, "Select", sel_all_tt)
-
-            edited_table = st.data_editor(
-                tt_data,
-                use_container_width=True,
-                hide_index=True,
-                key="tt_batch_edit",
-                disabled=[col for col in tt_data.columns if col != "Select"],
-            )
-
-            selected_ids = edited_table[edited_table["Select"] == True]["id"].tolist()
-
+        col_b1, col_b2 = st.columns([3, 7])
+        with col_b1:
             if st.button(
                 "🗑️ ရွေးချယ်ထားသည်များကို ဖျက်မည်",
                 type="secondary",
@@ -1105,40 +1059,88 @@ if st.session_state.role == "Admin":
                     tuple(selected_ids),
                 )
                 run_query.clear()
-                show_popup(f"ရွေးချယ်ထားသော အချိန်ဇယား {len(selected_ids)} ခုကို ဖျက်ပြီးပါပြီ!")
+                st.toast(f"🗑️ ရွေးချယ်ထားသော အချိန်ဇယား {len(selected_ids)} ခု ဖျက်ပြီးပါပြီ!", icon="✅")
+                st.rerun()
 
-            st.write("---")
+        with col_b2:
             ed_id = st.selectbox(
                 "ပြင်ဆင်လိုသည့် အချိန်ဇယား ID", tt_data["id"].tolist(), key="adm_ed_tt_id"
             )
             if st.button("✏️ ရွေးထားသည့် အချိန်ဇယား ပြင်မည်"):
                 edit_timetable_dialog(ed_id)
 
-    # =====================================================
-    # TAB 3 - STUDENTS
-    # =====================================================
-    with tabs[2]:
-        st.subheader("👥 ကျောင်းသားများ စီမံခန့်ခွဲမှု")
+# =========================================================
+# VIEW 3: STUDENTS MANAGEMENT (ADMIN)
+# =========================================================
+elif selected_menu == "👥 ကျောင်းသား စီမံခန့်ခွဲမှု":
+    st.subheader("👥 ကျောင်းသားများ စီမံခန့်ခွဲမှု")
 
-        s_c1, s_c2 = st.columns(2)
-        with s_c1:
-            with st.expander("➕ ကျောင်းသားအသစ် တစ်ဦးချင်း ထည့်ရန်"):
-                with st.form("stu_single_form", clear_on_submit=True):
-                    st_type = st.selectbox("ကျောင်းအမျိုးအစား", CLASS_TYPES, key="adm_st_type")
-                    st_class = st.text_input("တန်းခွဲ အမည်", key="adm_st_class")
-                    st_name = st.text_input("ကျောင်းသား အမည်", key="adm_st_name")
-                    st_age = st.number_input(
-                        "အသက်", min_value=3, max_value=80, value=15, key="adm_st_age"
-                    )
-                    st_parent = st.text_input("မိဘ အမည်", key="adm_st_parent")
-                    st_phone = st.text_input("ဖုန်းနံပါတ်", key="adm_st_phone")
-                    st_social = st.text_input("မိဘ Social အကောင့်", key="adm_st_social")
-                    st_address = st.text_area("လိပ်စာ", key="adm_st_address")
+    s_c1, s_c2 = st.columns(2)
+    with s_c1:
+        with st.expander("➕ ကျောင်းသားအသစ် တစ်ဦးချင်း ထည့်ရန်"):
+            with st.form("stu_single_form", clear_on_submit=True):
+                st_type = st.selectbox("ကျောင်းအမျိုးအစား", CLASS_TYPES, key="adm_st_type")
+                st_class = st.text_input("တန်းခွဲ အမည်", key="adm_st_class")
+                st_name = st.text_input("ကျောင်းသား အမည်", key="adm_st_name")
+                st_age = st.number_input(
+                    "အသက်", min_value=3, max_value=80, value=15, key="adm_st_age"
+                )
+                st_parent = st.text_input("မိဘ အမည်", key="adm_st_parent")
+                st_phone = st.text_input("ဖုန်းနံပါတ်", key="adm_st_phone")
+                st_social = st.text_input("မိဘ Social အကောင့်", key="adm_st_social")
+                st_address = st.text_area("လိပ်စာ", key="adm_st_address")
 
-                    if st.form_submit_button("သိမ်းဆည်းမည်"):
-                        if st_name and st_class:
+                if st.form_submit_button("သိမ်းဆည်းမည်", type="primary"):
+                    if st_name and st_class:
+                        try:
+                            execute_query(
+                                """
+                                INSERT INTO students (
+                                    student_name, age, class_type, class_name,
+                                    parent_name, phone, social_account, address
+                                )
+                                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                                """,
+                                (
+                                    st_name,
+                                    st_age,
+                                    st_type,
+                                    st_class,
+                                    st_parent,
+                                    st_phone,
+                                    st_social,
+                                    st_address,
+                                ),
+                            )
+                            run_query.clear()
+                            st.toast("✅ ကျောင်းသားစာရင်း သိမ်းဆည်းပြီးပါပြီ!", icon="🎉")
+                        except psycopg2.IntegrityError:
+                            st.error("ဤအတန်းတွင် ယခုအမည်ဖြင့် ကျောင်းသား ရှိပြီးသားဖြစ်နေပါသည်။")
+                    else:
+                        st.warning("ကျောင်းသားအမည်နှင့် အတန်း ဖြည့်သွင်းပါ။")
+
+    with s_c2:
+        with st.expander("📂 ကျောင်းသားစာရင်း Excel မှ Import"):
+            up_stu = st.file_uploader(
+                "Excel ဖိုင်တင်ရန် (Student_Name, Age, Class_Type, Class_Name, Parent_Name, Phone, Social_Account, Address)",
+                type=["xlsx", "xls"],
+                key="adm_up_stu",
+            )
+
+            if up_stu and st.button("📥 ကျောင်းသား Import စတင်မည်"):
+                try:
+                    imp_s = pd.read_excel(up_stu)
+                    required = {"Student_Name", "Class_Type", "Class_Name"}
+
+                    if required.issubset(set(imp_s.columns)):
+                        conn = get_conn()
+                        cur = conn.cursor()
+                        inserted = 0
+                        skipped = 0
+
+                        for _, r in imp_s.iterrows():
                             try:
-                                execute_query(
+                                cur.execute(
                                     """
                                     INSERT INTO students (
                                         student_name, age, class_type, class_name,
@@ -1147,113 +1149,66 @@ if st.session_state.role == "Admin":
                                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
                                     """,
                                     (
-                                        st_name,
-                                        st_age,
-                                        st_type,
-                                        st_class,
-                                        st_parent,
-                                        st_phone,
-                                        st_social,
-                                        st_address,
+                                        str(r["Student_Name"]),
+                                        int(r["Age"]) if pd.notna(r.get("Age")) else None,
+                                        str(r["Class_Type"]),
+                                        str(r["Class_Name"]),
+                                        str(r["Parent_Name"]) if pd.notna(r.get("Parent_Name")) else None,
+                                        str(r["Phone"]) if pd.notna(r.get("Phone")) else None,
+                                        str(r["Social_Account"]) if pd.notna(r.get("Social_Account")) else None,
+                                        str(r["Address"]) if pd.notna(r.get("Address")) else None,
                                     ),
                                 )
-                                run_query.clear()
-                                show_popup("ကျောင်းသားစာရင်း သိမ်းဆည်းပြီးပါပြီ!")
+                                inserted += 1
                             except psycopg2.IntegrityError:
-                                st.error("ဤအတန်းတွင် ယခုအမည်ဖြင့် ကျောင်းသား ရှိပြီးသားဖြစ်နေပါသည်။")
-                        else:
-                            st.warning("ကျောင်းသားအမည်နှင့် အတန်း ဖြည့်သွင်းပါ။")
+                                conn.rollback()
+                                skipped += 1
 
-        with s_c2:
-            with st.expander("📂 ကျောင်းသားစာရင်း Excel မှ Import"):
-                up_stu = st.file_uploader(
-                    "Excel ဖိုင်တင်ရန် (Student_Name, Age, Class_Type, Class_Name, Parent_Name, Phone, Social_Account, Address)",
-                    type=["xlsx", "xls"],
-                    key="adm_up_stu",
-                )
+                        conn.commit()
+                        cur.close()
+                        release_conn(conn)
+                        run_query.clear()
 
-                if up_stu and st.button("📥 ကျောင်းသား Import စတင်မည်"):
-                    try:
-                        imp_s = pd.read_excel(up_stu)
-                        required = {"Student_Name", "Class_Type", "Class_Name"}
+                        st.toast(f"✅ ကျောင်းသားစာရင်း Import ပြီးပါပြီ! (အသစ်: {inserted} | ကျော်ခဲ့သည်: {skipped})", icon="🎉")
+                        st.rerun()
+                    else:
+                        st.error("Excel တွင် Student_Name, Class_Type, Class_Name ကော်လံများ ပါဝင်ရပါမည်။")
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
-                        if required.issubset(set(imp_s.columns)):
-                            conn = get_conn()
-                            cur = conn.cursor()
-                            inserted = 0
-                            skipped = 0
+    st.markdown("---")
+    st.subheader("📋 ကျောင်းသားစာရင်း ပြင်ဆင်/ဖျက်ခြင်း")
 
-                            for _, r in imp_s.iterrows():
-                                try:
-                                    cur.execute(
-                                        """
-                                        INSERT INTO students (
-                                            student_name, age, class_type, class_name,
-                                            parent_name, phone, social_account, address
-                                        )
-                                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-                                        """,
-                                        (
-                                            str(r["Student_Name"]),
-                                            int(r["Age"]) if pd.notna(r.get("Age")) else None,
-                                            str(r["Class_Type"]),
-                                            str(r["Class_Name"]),
-                                            str(r["Parent_Name"]) if pd.notna(r.get("Parent_Name")) else None,
-                                            str(r["Phone"]) if pd.notna(r.get("Phone")) else None,
-                                            str(r["Social_Account"]) if pd.notna(r.get("Social_Account")) else None,
-                                            str(r["Address"]) if pd.notna(r.get("Address")) else None,
-                                        ),
-                                    )
-                                    inserted += 1
-                                except psycopg2.IntegrityError:
-                                    conn.rollback()
-                                    skipped += 1
+    stu_df = run_query(
+        """
+        SELECT
+            id, student_name AS "Student_Name", age AS "Age", class_type AS "Class_Type",
+            class_name AS "Class_Name", parent_name AS "Parent_Name", phone AS "Phone",
+            social_account AS "Social_Account", address AS "Address"
+        FROM students
+        ORDER BY class_type, class_name, student_name
+        """
+    )
 
-                            conn.commit()
-                            cur.close()
-                            release_conn(conn)
-                            run_query.clear()
+    if not stu_df.empty:
+        col_sa_stu, _ = st.columns([2, 8])
+        with col_sa_stu:
+            sel_all_stu = st.checkbox("☑️ အားလုံးရွေးမည်", key="chk_all_stu")
 
-                            show_popup(
-                                "ကျောင်းသားစာရင်း Import ပြီးပါပြီ!",
-                                f"အသစ်ထည့်သွင်းမှု: {inserted} ဦး | ထပ်နေ၍ ကျော်ခဲ့သည်: {skipped} ဦး",
-                            )
-                        else:
-                            st.error("Excel တွင် Student_Name, Class_Type, Class_Name ကော်လံများ ပါဝင်ရပါမည်။")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+        stu_df.insert(0, "Select", sel_all_stu)
 
-        st.markdown("---")
-        st.subheader("📋 ကျောင်းသားစာရင်း ပြင်ဆင်/ဖျက်ခြင်း")
-
-        stu_df = run_query(
-            """
-            SELECT
-                id, student_name AS "Student_Name", age AS "Age", class_type AS "Class_Type",
-                class_name AS "Class_Name", parent_name AS "Parent_Name", phone AS "Phone",
-                social_account AS "Social_Account", address AS "Address"
-            FROM students
-            ORDER BY class_type, class_name, student_name
-            """
+        edited_stu = st.data_editor(
+            stu_df,
+            use_container_width=True,
+            hide_index=True,
+            key="adm_stu_batch_edit",
+            disabled=[col for col in stu_df.columns if col != "Select"],
         )
 
-        if not stu_df.empty:
-            col_sa_stu, _ = st.columns([2, 8])
-            with col_sa_stu:
-                sel_all_stu = st.checkbox("☑️ အားလုံးရွေးမည်", key="chk_all_stu")
+        sel_stu_ids = edited_stu[edited_stu["Select"] == True]["id"].tolist()
 
-            stu_df.insert(0, "Select", sel_all_stu)
-
-            edited_stu = st.data_editor(
-                stu_df,
-                use_container_width=True,
-                hide_index=True,
-                key="adm_stu_batch_edit",
-                disabled=[col for col in stu_df.columns if col != "Select"],
-            )
-
-            sel_stu_ids = edited_stu[edited_stu["Select"] == True]["id"].tolist()
-
+        col_sb1, col_sb2 = st.columns([3, 7])
+        with col_sb1:
             if st.button(
                 "🗑️ ရွေးထားသော ကျောင်းသားများ ဖျက်မည်",
                 type="secondary",
@@ -1264,460 +1219,20 @@ if st.session_state.role == "Admin":
                     tuple(sel_stu_ids),
                 )
                 run_query.clear()
-                show_popup(f"ရွေးချယ်ထားသော ကျောင်းသား {len(sel_stu_ids)} ဦးကို ဖျက်ပြီးပါပြီ!")
+                st.toast(f"🗑️ ကျောင်းသား {len(sel_stu_ids)} ဦး ဖျက်ပြီးပါပြီ!", icon="✅")
+                st.rerun()
 
-            st.write("---")
+        with col_sb2:
             ed_stu_id = st.selectbox(
                 "ပြင်ဆင်လိုသည့် ကျောင်းသား ID", stu_df["id"].tolist(), key="adm_ed_stu_id"
             )
             if st.button("✏️ ရွေးထားသည့် ကျောင်းသား အချက်အလက် ပြင်မည်"):
                 edit_student_dialog(ed_stu_id)
 
-    # Attendance/Report mapping for Admin
-    att_tab = tabs[3]
-    rep_tab = tabs[4]
-
-    # =====================================================
-    # TAB 6 - TEACHERS
-    # =====================================================
-    with tabs[5]:
-        st.subheader("👨‍🏫 ဆရာ/ဆရာမ စာရင်း စီမံခန့်ခွဲမှု")
-
-        tc1, tc2 = st.columns(2)
-        with tc1:
-            with st.expander("➕ ဆရာ/မ အသစ် တစ်ဦးချင်း ထည့်ရန်"):
-                with st.form("teach_single_form", clear_on_submit=True):
-                    t_name = st.text_input("ဆရာ/မ အမည်")
-                    t_phone = st.text_input("ဖုန်းနံပါတ်")
-
-                    if st.form_submit_button("သိမ်းဆည်းမည်"):
-                        if t_name:
-                            try:
-                                execute_query(
-                                    "INSERT INTO teachers (teacher_name, phone) VALUES (%s, %s)",
-                                    (t_name.strip(), t_phone),
-                                )
-                                run_query.clear()
-                                show_popup("ဆရာ/မ အချက်အလက် သိမ်းဆည်းပြီးပါပြီ!")
-                            except psycopg2.IntegrityError:
-                                st.error("ဤဆရာ/မ အမည် ရှိပြီးသားဖြစ်နေပါသည်။")
-                        else:
-                            st.warning("အမည် ဖြည့်သွင်းပါ။")
-
-        with tc2:
-            with st.expander("📂 ဆရာ/မ စာရင်း Excel မှ Import"):
-                up_teach = st.file_uploader(
-                    "Excel တင်ရန် (Columns: Teacher_Name, Phone)",
-                    type=["xlsx", "xls"],
-                    key="adm_up_teach",
-                )
-
-                if up_teach and st.button("📥 ဆရာ/မ Import စတင်မည်"):
-                    try:
-                        imp_t = pd.read_excel(up_teach)
-                        if "Teacher_Name" in imp_t.columns:
-                            conn = get_conn()
-                            cur = conn.cursor()
-                            inserted = 0
-                            skipped = 0
-
-                            for _, r in imp_t.iterrows():
-                                try:
-                                    cur.execute(
-                                        "INSERT INTO teachers (teacher_name, phone) VALUES (%s, %s)",
-                                        (
-                                            str(r["Teacher_Name"]).strip(),
-                                            str(r["Phone"]) if pd.notna(r.get("Phone")) else None,
-                                        ),
-                                    )
-                                    inserted += 1
-                                except psycopg2.IntegrityError:
-                                    conn.rollback()
-                                    skipped += 1
-
-                            conn.commit()
-                            cur.close()
-                            release_conn(conn)
-                            run_query.clear()
-
-                            show_popup(
-                                "ဆရာ/မ စာရင်း Import ပြီးပါပြီ!",
-                                f"အသစ်ထည့်သွင်းမှု: {inserted} ဦး | ထပ်နေ၍ ကျော်ခဲ့သည်: {skipped} ဦး",
-                            )
-                        else:
-                            st.error("Excel တွင် Teacher_Name ကော်လံ ပါဝင်ရပါမည်။")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-
-        st.markdown("---")
-        st.subheader("📋 ဆရာ/မ စာရင်း ပြင်ဆင်/ဖျက်ခြင်း")
-
-        teach_df = run_query(
-            "SELECT id, teacher_name AS \"Teacher_Name\", phone AS \"Phone\" FROM teachers ORDER BY teacher_name"
-        )
-
-        if not teach_df.empty:
-            col_sa_t, _ = st.columns([2, 8])
-            with col_sa_t:
-                sel_all_t = st.checkbox("☑️ အားလုံးရွေးမည်", key="chk_all_t")
-
-            teach_df.insert(0, "Select", sel_all_t)
-
-            edited_t = st.data_editor(
-                teach_df,
-                use_container_width=True,
-                hide_index=True,
-                key="adm_teach_batch_edit",
-                disabled=[col for col in teach_df.columns if col != "Select"],
-            )
-
-            sel_t_ids = edited_t[edited_t["Select"] == True]["id"].tolist()
-
-            if st.button(
-                "🗑️ ရွေးထားသော ဆရာ/မများ ဖျက်မည်",
-                type="secondary",
-                disabled=len(sel_t_ids) == 0,
-            ):
-                execute_query(
-                    f"DELETE FROM teachers WHERE id IN ({','.join(['%s'] * len(sel_t_ids))})",
-                    tuple(sel_t_ids),
-                )
-                run_query.clear()
-                show_popup(f"ရွေးချယ်ထားသော ဆရာ/မ {len(sel_t_ids)} ဦးကို ဖျက်ပြီးပါပြီ!")
-
-            st.write("---")
-            ed_t_id = st.selectbox(
-                "ပြင်ဆင်လိုသည့် ဆရာ/မ ID", teach_df["id"].tolist(), key="adm_ed_t_id"
-            )
-            if st.button("✏️ ရွေးထားသည့် ဆရာ/မ အချက်အလက် ပြင်မည်"):
-                edit_teacher_dialog(ed_t_id)
-
-    # =====================================================
-    # TAB 7 - LESSONS
-    # =====================================================
-    with tabs[6]:
-        st.subheader("📖 သင်ခန်းစာများ စီမံခန့်ခွဲမှု")
-
-        lc1, lc2 = st.columns(2)
-        with lc1:
-            with st.expander("➕ သင်ခန်းစာ အသစ်တစ်ခုချင်း ထည့်ရန်"):
-                with st.form("lsn_single_form", clear_on_submit=True):
-                    l_lvl = st.text_input("Level")
-                    l_topic = st.text_input("သင်ခန်းစာ အမည်")
-
-                    if st.form_submit_button("သိမ်းဆည်းမည်"):
-                        if l_lvl and l_topic:
-                            try:
-                                execute_query(
-                                    "INSERT INTO lessons (level, lesson_topic) VALUES (%s, %s)",
-                                    (l_lvl.strip(), l_topic.strip()),
-                                )
-                                run_query.clear()
-                                show_popup("သင်ခန်းစာ အသစ် ထည့်သွင်းပြီးပါပြီ!")
-                            except psycopg2.IntegrityError:
-                                st.error("ဤ Level တွင် ယခုသင်ခန်းစာ ရှိပြီးသားဖြစ်နေပါသည်။")
-                        else:
-                            st.warning("Level နှင့် သင်ခန်းစာအမည် ဖြည့်သွင်းပါ။")
-
-        with lc2:
-            with st.expander("📂 သင်ခန်းစာများ Excel မှ Import"):
-                up_lsn = st.file_uploader(
-                    "Excel တင်ရန် (Columns: Level, Lesson_Topic)",
-                    type=["xlsx", "xls"],
-                    key="adm_up_lsn",
-                )
-
-                if up_lsn and st.button("📥 သင်ခန်းစာ Import စတင်မည်"):
-                    try:
-                        imp_l = pd.read_excel(up_lsn)
-                        required = {"Level", "Lesson_Topic"}
-
-                        if required.issubset(set(imp_l.columns)):
-                            conn = get_conn()
-                            cur = conn.cursor()
-                            inserted = 0
-                            skipped = 0
-
-                            for _, r in imp_l.iterrows():
-                                try:
-                                    cur.execute(
-                                        "INSERT INTO lessons (level, lesson_topic) VALUES (%s, %s)",
-                                        (str(r["Level"]).strip(), str(r["Lesson_Topic"]).strip()),
-                                    )
-                                    inserted += 1
-                                except psycopg2.IntegrityError:
-                                    conn.rollback()
-                                    skipped += 1
-
-                            conn.commit()
-                            cur.close()
-                            release_conn(conn)
-                            run_query.clear()
-
-                            show_popup(
-                                "သင်ခန်းစာများ Import ပြီးပါပြီ!",
-                                f"အသစ်ထည့်သွင်းမှု: {inserted} ခု | ထပ်နေ၍ ကျော်ခဲ့သည်: {skipped} ခု",
-                            )
-                        else:
-                            st.error("Excel တွင် Level နှင့် Lesson_Topic ကော်လံများ ပါဝင်ရပါမည်။")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-
-        st.markdown("---")
-        st.subheader("📋 သင်ခန်းစာများ ပြင်ဆင်/ဖျက်ခြင်း")
-
-        lsn_df = run_query(
-            "SELECT id, level AS \"Level\", lesson_topic AS \"Lesson_Topic\" FROM lessons ORDER BY level, id"
-        )
-
-        if not lsn_df.empty:
-            col_sa_l, _ = st.columns([2, 8])
-            with col_sa_l:
-                sel_all_l = st.checkbox("☑️ အားလုံးရွေးမည်", key="chk_all_l")
-
-            lsn_df.insert(0, "Select", sel_all_l)
-
-            edited_l = st.data_editor(
-                lsn_df,
-                use_container_width=True,
-                hide_index=True,
-                key="adm_lsn_batch_edit",
-                disabled=[col for col in lsn_df.columns if col != "Select"],
-            )
-
-            sel_l_ids = edited_l[edited_l["Select"] == True]["id"].tolist()
-
-            if st.button(
-                "🗑️ ရွေးထားသော သင်ခန်းစာများ ဖျက်မည်",
-                type="secondary",
-                disabled=len(sel_l_ids) == 0,
-            ):
-                execute_query(
-                    f"DELETE FROM lessons WHERE id IN ({','.join(['%s'] * len(sel_l_ids))})",
-                    tuple(sel_l_ids),
-                )
-                run_query.clear()
-                show_popup(f"ရွေးချယ်ထားသော သင်ခန်းစာ {len(sel_l_ids)} ခုကို ဖျက်ပြီးပါပြီ!")
-
-            st.write("---")
-            ed_l_id = st.selectbox(
-                "ပြင်ဆင်လိုသည့် သင်ခန်းစာ ID", lsn_df["id"].tolist(), key="adm_ed_l_id"
-            )
-            if st.button("✏️ ရွေးထားသည့် သင်ခန်းစာ ပြင်မည်"):
-                edit_lesson_dialog(ed_l_id)
-        else:
-            st.info("သင်ခန်းစာ အချက်အလက်များ မရှိသေးပါ။")
-
-    # =====================================================
-    # TAB 8 - ANALYTICS
-    # =====================================================
-    with tabs[7]:
-        st.subheader("📈 We Are Genius - Academic Analytics Dashboard")
-
-        total_students = run_query("SELECT COUNT(*) AS c FROM students").iloc[0]["c"]
-        total_teachers = run_query("SELECT COUNT(*) AS c FROM teachers").iloc[0]["c"]
-        total_schedules = run_query("SELECT COUNT(*) AS c FROM timetable").iloc[0]["c"]
-        total_lessons = run_query("SELECT COUNT(*) AS c FROM lessons").iloc[0]["c"]
-
-        k1, k2, k3, k4 = st.columns(4)
-        with k1:
-            st.markdown(
-                f"""
-                <div class="stat-card">
-                    <div class="stat-label">👨‍🎓 Total Students</div>
-                    <div class="stat-val">{total_students}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        with k2:
-            st.markdown(
-                f"""
-                <div class="stat-card">
-                    <div class="stat-label">👨‍🏫 Faculty Teachers</div>
-                    <div class="stat-val">{total_teachers}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        with k3:
-            st.markdown(
-                f"""
-                <div class="stat-card">
-                    <div class="stat-label">📅 Scheduled Classes</div>
-                    <div class="stat-val">{total_schedules}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        with k4:
-            st.markdown(
-                f"""
-                <div class="stat-card">
-                    <div class="stat-label">📖 Active Lessons</div>
-                    <div class="stat-val">{total_lessons}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        st.markdown("---")
-        chart_c1, chart_c2 = st.columns(2)
-        with chart_c1:
-            st.markdown("##### 📊 အတန်းတက် / ပျက် / ခွင့် နှုန်းထား")
-            att_stat_df = run_query(
-                """
-                SELECT status AS "အခြေအနေ", COUNT(*) AS "ဦးရေ"
-                FROM attendance
-                GROUP BY status
-                ORDER BY status
-                """
-            )
-            if not att_stat_df.empty:
-                st.bar_chart(att_stat_df.set_index("အခြေအနေ"), use_container_width=True)
-            else:
-                st.info("ကျောင်းခေါ်ချိန် မှတ်တမ်းများ မရှိသေးပါ။")
-
-        with chart_c2:
-            st.markdown("##### 👨‍🏫 ဆရာ/မ တစ်ဦးချင်း သင်ကြားချိန်")
-            teach_hours_q = """
-                SELECT teacher AS "Teacher", COUNT(*) AS "စာသင်ချိန်_အရေအတွက်"
-                FROM
-                (
-                    SELECT teacher_name AS teacher FROM timetable WHERE teacher_name IS NOT NULL
-                    UNION ALL
-                    SELECT assistant_1 AS teacher FROM timetable WHERE assistant_1 IS NOT NULL
-                    UNION ALL
-                    SELECT assistant_2 AS teacher FROM timetable WHERE assistant_2 IS NOT NULL
-                ) AS teacher_data
-                GROUP BY teacher
-                ORDER BY COUNT(*) DESC
-            """
-            teach_stat_df = run_query(teach_hours_q)
-            if not teach_stat_df.empty:
-                st.bar_chart(teach_stat_df.set_index("Teacher"), use_container_width=True)
-            else:
-                st.info("အချိန်ဇယား အချက်အလက်များ မရှိသေးပါ။")
-
-        st.markdown("---")
-        chart_c3, chart_c4 = st.columns(2)
-        with chart_c3:
-            st.markdown("##### 🏫 သင်ကြားမှု စနစ်အလိုက် ကျောင်းသား အင်အား")
-            class_dist_df = run_query(
-                """
-                SELECT class_type AS "Class_Type", COUNT(*) AS "ကျောင်းသားဦးရေ"
-                FROM students
-                GROUP BY class_type
-                ORDER BY class_type
-                """
-            )
-            if not class_dist_df.empty:
-                st.bar_chart(class_dist_df.set_index("Class_Type"), use_container_width=True)
-            else:
-                st.info("ကျောင်းသားစာရင်း မရှိသေးပါ။")
-
-        with chart_c4:
-            st.markdown("##### 📖 Level အလိုက် သင်ခန်းစာ အရေအတွက်")
-            lsn_dist_df = run_query(
-                """
-                SELECT level AS "Level", COUNT(*) AS "သင်ခန်းစာ အရေအတွက်"
-                FROM lessons
-                GROUP BY level
-                ORDER BY level
-                """
-            )
-            if not lsn_dist_df.empty:
-                st.bar_chart(lsn_dist_df.set_index("Level"), use_container_width=True)
-            else:
-                st.info("သင်ခန်းစာ စာရင်း မရှိသေးပါ။")
-
-    # =====================================================
-    # TAB 9 - USER MANAGEMENT
-    # =====================================================
-    with tabs[8]:
-        st.subheader("🔐 User Account စီမံခန့်ခွဲမှု")
-        st.info(
-            "Admin သည် Admin / Teacher account အသစ်များ ဖန်တီးနိုင်ပြီး account ကို Active/Inactive "
-            "ပြုလုပ်နိုင်ပါသည်။ Password များကို database ထဲတွင် plain text မသိမ်းပါ။"
-        )
-
-        with st.form("create_user_form", clear_on_submit=True):
-            u1, u2 = st.columns(2)
-            with u1:
-                new_username = st.text_input("Username")
-                new_role = st.selectbox("Role", ["Teacher", "Admin"])
-            with u2:
-                new_password = st.text_input("Password", type="password")
-                new_password2 = st.text_input("Confirm Password", type="password")
-
-            if st.form_submit_button("➕ User Account ဖန်တီးမည်", type="primary", use_container_width=True):
-                if not new_username.strip() or not new_password:
-                    st.warning("Username နှင့် Password ဖြည့်ပေးပါ။")
-                elif new_password != new_password2:
-                    st.error("Password နှစ်ခု မတူပါ။")
-                elif len(new_password) < 8:
-                    st.error("Password သည် အနည်းဆုံး 8 characters ရှိရပါမည်။")
-                else:
-                    try:
-                        execute_query(
-                            """
-                            INSERT INTO users (username, password_hash, role)
-                            VALUES (%s,%s,%s)
-                            """,
-                            (new_username.strip(), hash_password(new_password), new_role),
-                        )
-                        run_query.clear()
-                        show_popup(f"{new_role} account အသစ် ဖန်တီးပြီးပါပြီ။")
-                    except psycopg2.IntegrityError:
-                        st.error("ဤ Username ရှိပြီးသား ဖြစ်နေပါသည်။")
-
-        st.markdown("---")
-        users_df = run_query(
-            """
-            SELECT id, username, role, active, created_at
-            FROM users
-            ORDER BY role, username
-            """
-        )
-
-        if not users_df.empty:
-            st.dataframe(users_df, use_container_width=True, hide_index=True)
-            user_ids = users_df["id"].tolist()
-            selected_user_id = st.selectbox("ပြောင်းလဲလိုသော User ID", user_ids, key="selected_user_id")
-            selected_user = users_df[users_df["id"] == selected_user_id].iloc[0]
-
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("🔄 Active / Inactive ပြောင်းမည်", use_container_width=True):
-                    new_active = not bool(selected_user["active"])
-                    execute_query(
-                        "UPDATE users SET active = %s WHERE id = %s",
-                        (new_active, int(selected_user_id)),
-                    )
-                    run_query.clear()
-                    st.rerun()
-
-            with c2:
-                reset_password = st.text_input("Password အသစ်", type="password", key="reset_password")
-                if st.button("🔑 Password ပြောင်းမည်", use_container_width=True):
-                    if len(reset_password) < 8:
-                        st.error("Password သည် အနည်းဆုံး 8 characters ရှိရပါမည်။")
-                    else:
-                        execute_query(
-                            "UPDATE users SET password_hash = %s WHERE id = %s",
-                            (hash_password(reset_password), int(selected_user_id)),
-                        )
-                        run_query.clear()
-                        show_popup("Password ပြောင်းလဲပြီးပါပြီ။")
-
-else:
-    att_tab = tabs[1]
-    rep_tab = tabs[2]
-
 # =========================================================
-# DAILY ATTENDANCE TAB
+# VIEW 4: DAILY ATTENDANCE
 # =========================================================
-with att_tab:
+elif selected_menu == "📋 နေ့စဉ် ကျောင်းခေါ်ချိန် မှတ်တမ်း":
     st.subheader("📋 နေ့စဉ် ကျောင်းခေါ်ချိန် မှတ်တမ်း")
 
     st_classes = run_query(
@@ -1822,16 +1337,16 @@ with att_tab:
                         release_conn(conn)
 
                     run_query.clear()
-                    show_popup("ကျောင်းခေါ်ချိန် အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ!")
+                    st.toast("✅ ကျောင်းခေါ်ချိန် အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ!", icon="🎉")
         else:
             st.warning("ဤအတန်းအတွက် ကျောင်းသား မရှိသေးပါ။")
     else:
         st.info("ကျောင်းခေါ်ချိန်စစ်ရန် ကျောင်းသားစာရင်း ဦးစွာ ထည့်သွင်းပါ။")
 
 # =========================================================
-# ATTENDANCE & STRENGTH REPORT TAB
+# VIEW 5: ATTENDANCE & STRENGTH REPORT
 # =========================================================
-with rep_tab:
+elif selected_menu == "📊 အင်အားနှင့် တက်/ပျက် စာရင်းချုပ်":
     st.subheader("📊 ကျောင်းသားအင်အားနှင့် တက်/ပျက် စာရင်းချုပ်")
 
     rep_date = st.date_input("စစ်ဆေးလိုသည့် ရက်စွဲ", date.today(), key="sum_d_pick").strftime("%Y-%m-%d")
@@ -1861,3 +1376,439 @@ with rep_tab:
         st.dataframe(rep_df, use_container_width=True, hide_index=True)
     else:
         st.info("အချက်အလက်များ မရှိသေးပါ။")
+
+# =========================================================
+# VIEW 6: TEACHERS MANAGEMENT (ADMIN)
+# =========================================================
+elif selected_menu == "👨‍🏫 ဆရာ/မ စာရင်း စီမံရန်":
+    st.subheader("👨‍🏫 ဆရာ/ဆရာမ စာရင်း စီမံခန့်ခွဲမှု")
+
+    tc1, tc2 = st.columns(2)
+    with tc1:
+        with st.expander("➕ ဆရာ/မ အသစ် တစ်ဦးချင်း ထည့်ရန်"):
+            with st.form("teach_single_form", clear_on_submit=True):
+                t_name = st.text_input("ဆရာ/မ အမည်")
+                t_phone = st.text_input("ဖုန်းနံပါတ်")
+
+                if st.form_submit_button("သိမ်းဆည်းမည်", type="primary"):
+                    if t_name:
+                        try:
+                            execute_query(
+                                "INSERT INTO teachers (teacher_name, phone) VALUES (%s, %s)",
+                                (t_name.strip(), t_phone),
+                            )
+                            run_query.clear()
+                            st.toast("✅ ဆရာ/မ အချက်အလက် သိမ်းဆည်းပြီးပါပြီ!", icon="🎉")
+                        except psycopg2.IntegrityError:
+                            st.error("ဤဆရာ/မ အမည် ရှိပြီးသားဖြစ်နေပါသည်။")
+                    else:
+                        st.warning("အမည် ဖြည့်သွင်းပါ။")
+
+    with tc2:
+        with st.expander("📂 ဆရာ/မ စာရင်း Excel မှ Import"):
+            up_teach = st.file_uploader(
+                "Excel တင်ရန် (Columns: Teacher_Name, Phone)",
+                type=["xlsx", "xls"],
+                key="adm_up_teach",
+            )
+
+            if up_teach and st.button("📥 ဆရာ/မ Import စတင်မည်"):
+                try:
+                    imp_t = pd.read_excel(up_teach)
+                    if "Teacher_Name" in imp_t.columns:
+                        conn = get_conn()
+                        cur = conn.cursor()
+                        inserted = 0
+                        skipped = 0
+
+                        for _, r in imp_t.iterrows():
+                            try:
+                                cur.execute(
+                                    "INSERT INTO teachers (teacher_name, phone) VALUES (%s, %s)",
+                                    (
+                                        str(r["Teacher_Name"]).strip(),
+                                        str(r["Phone"]) if pd.notna(r.get("Phone")) else None,
+                                    ),
+                                )
+                                inserted += 1
+                            except psycopg2.IntegrityError:
+                                conn.rollback()
+                                skipped += 1
+
+                        conn.commit()
+                        cur.close()
+                        release_conn(conn)
+                        run_query.clear()
+
+                        st.toast(f"✅ ဆရာ/မ စာရင်း Import ပြီးပါပြီ! (အသစ်: {inserted} | ကျော်ခဲ့သည်: {skipped})", icon="🎉")
+                        st.rerun()
+                    else:
+                        st.error("Excel တွင် Teacher_Name ကော်လံ ပါဝင်ရပါမည်။")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+    st.markdown("---")
+    st.subheader("📋 ဆရာ/မ စာရင်း ပြင်ဆင်/ဖျက်ခြင်း")
+
+    teach_df = run_query(
+        "SELECT id, teacher_name AS \"Teacher_Name\", phone AS \"Phone\" FROM teachers ORDER BY teacher_name"
+    )
+
+    if not teach_df.empty:
+        col_sa_t, _ = st.columns([2, 8])
+        with col_sa_t:
+            sel_all_t = st.checkbox("☑️ အားလုံးရွေးမည်", key="chk_all_t")
+
+        teach_df.insert(0, "Select", sel_all_t)
+
+        edited_t = st.data_editor(
+            teach_df,
+            use_container_width=True,
+            hide_index=True,
+            key="adm_teach_batch_edit",
+            disabled=[col for col in teach_df.columns if col != "Select"],
+        )
+
+        sel_t_ids = edited_t[edited_t["Select"] == True]["id"].tolist()
+
+        col_tc1, col_tc2 = st.columns([3, 7])
+        with col_tc1:
+            if st.button(
+                "🗑️ ရွေးထားသော ဆရာ/မများ ဖျက်မည်",
+                type="secondary",
+                disabled=len(sel_t_ids) == 0,
+            ):
+                execute_query(
+                    f"DELETE FROM teachers WHERE id IN ({','.join(['%s'] * len(sel_t_ids))})",
+                    tuple(sel_t_ids),
+                )
+                run_query.clear()
+                st.toast(f"🗑️ ဆရာ/မ {len(sel_t_ids)} ဦး ဖျက်ပြီးပါပြီ!", icon="✅")
+                st.rerun()
+
+        with col_tc2:
+            ed_t_id = st.selectbox(
+                "ပြင်ဆင်လိုသည့် ဆရာ/မ ID", teach_df["id"].tolist(), key="adm_ed_t_id"
+            )
+            if st.button("✏️ ရွေးထားသည့် ဆရာ/မ အချက်အလက် ပြင်မည်"):
+                edit_teacher_dialog(ed_t_id)
+
+# =========================================================
+# VIEW 7: LESSONS MANAGEMENT (ADMIN)
+# =========================================================
+elif selected_menu == "📖 သင်ခန်းစာများ စီမံရန်":
+    st.subheader("📖 သင်ခန်းစာများ စီမံခန့်ခွဲမှု")
+
+    lc1, lc2 = st.columns(2)
+    with lc1:
+        with st.expander("➕ သင်ခန်းစာ အသစ်တစ်ခုချင်း ထည့်ရန်"):
+            with st.form("lsn_single_form", clear_on_submit=True):
+                l_lvl = st.text_input("Level")
+                l_topic = st.text_input("သင်ခန်းစာ အမည်")
+
+                if st.form_submit_button("သိမ်းဆည်းမည်", type="primary"):
+                    if l_lvl and l_topic:
+                        try:
+                            execute_query(
+                                "INSERT INTO lessons (level, lesson_topic) VALUES (%s, %s)",
+                                (l_lvl.strip(), l_topic.strip()),
+                            )
+                            run_query.clear()
+                            st.toast("✅ သင်ခန်းစာ အသစ် ထည့်သွင်းပြီးပါပြီ!", icon="🎉")
+                        except psycopg2.IntegrityError:
+                            st.error("ဤ Level တွင် ယခုသင်ခန်းစာ ရှိပြီးသားဖြစ်နေပါသည်။")
+                    else:
+                        st.warning("Level နှင့် သင်ခန်းစာအမည် ဖြည့်သွင်းပါ။")
+
+    with lc2:
+        with st.expander("📂 သင်ခန်းစာများ Excel မှ Import"):
+            up_lsn = st.file_uploader(
+                "Excel တင်ရန် (Columns: Level, Lesson_Topic)",
+                type=["xlsx", "xls"],
+                key="adm_up_lsn",
+            )
+
+            if up_lsn and st.button("📥 သင်ခန်းစာ Import စတင်မည်"):
+                try:
+                    imp_l = pd.read_excel(up_lsn)
+                    required = {"Level", "Lesson_Topic"}
+
+                    if required.issubset(set(imp_l.columns)):
+                        conn = get_conn()
+                        cur = conn.cursor()
+                        inserted = 0
+                        skipped = 0
+
+                        for _, r in imp_l.iterrows():
+                            try:
+                                cur.execute(
+                                    "INSERT INTO lessons (level, lesson_topic) VALUES (%s, %s)",
+                                    (str(r["Level"]).strip(), str(r["Lesson_Topic"]).strip()),
+                                )
+                                inserted += 1
+                            except psycopg2.IntegrityError:
+                                conn.rollback()
+                                skipped += 1
+
+                        conn.commit()
+                        cur.close()
+                        release_conn(conn)
+                        run_query.clear()
+
+                        st.toast(f"✅ သင်ခန်းစာများ Import ပြီးပါပြီ! (အသစ်: {inserted} | ကျော်ခဲ့သည်: {skipped})", icon="🎉")
+                        st.rerun()
+                    else:
+                        st.error("Excel တွင် Level နှင့် Lesson_Topic ကော်လံများ ပါဝင်ရပါမည်။")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+    st.markdown("---")
+    st.subheader("📋 သင်ခန်းစာများ ပြင်ဆင်/ဖျက်ခြင်း")
+
+    lsn_df = run_query(
+        "SELECT id, level AS \"Level\", lesson_topic AS \"Lesson_Topic\" FROM lessons ORDER BY level, id"
+    )
+
+    if not lsn_df.empty:
+        col_sa_l, _ = st.columns([2, 8])
+        with col_sa_l:
+            sel_all_l = st.checkbox("☑️ အားလုံးရွေးမည်", key="chk_all_l")
+
+        lsn_df.insert(0, "Select", sel_all_l)
+
+        edited_l = st.data_editor(
+            lsn_df,
+            use_container_width=True,
+            hide_index=True,
+            key="adm_lsn_batch_edit",
+            disabled=[col for col in lsn_df.columns if col != "Select"],
+        )
+
+        sel_l_ids = edited_l[edited_l["Select"] == True]["id"].tolist()
+
+        col_lc1, col_lc2 = st.columns([3, 7])
+        with col_lc1:
+            if st.button(
+                "🗑️ ရွေးထားသော သင်ခန်းစာများ ဖျက်မည်",
+                type="secondary",
+                disabled=len(sel_l_ids) == 0,
+            ):
+                execute_query(
+                    f"DELETE FROM lessons WHERE id IN ({','.join(['%s'] * len(sel_l_ids))})",
+                    tuple(sel_l_ids),
+                )
+                run_query.clear()
+                st.toast(f"🗑️ သင်ခန်းစာ {len(sel_l_ids)} ခု ဖျက်ပြီးပါပြီ!", icon="✅")
+                st.rerun()
+
+        with col_lc2:
+            ed_l_id = st.selectbox(
+                "ပြင်ဆင်လိုသည့် သင်ခန်းစာ ID", lsn_df["id"].tolist(), key="adm_ed_l_id"
+            )
+            if st.button("✏️ ရွေးထားသည့် သင်ခန်းစာ ပြင်မည်"):
+                edit_lesson_dialog(ed_l_id)
+    else:
+        st.info("သင်ခန်းစာ အချက်အလက်များ မရှိသေးပါ။")
+
+# =========================================================
+# VIEW 8: ANALYTICS (ADMIN)
+# =========================================================
+elif selected_menu == "📈 Analytics Dashboard":
+    st.subheader("📈 We Are Genius - Academic Analytics Dashboard")
+
+    total_students = run_query("SELECT COUNT(*) AS c FROM students").iloc[0]["c"]
+    total_teachers = run_query("SELECT COUNT(*) AS c FROM teachers").iloc[0]["c"]
+    total_schedules = run_query("SELECT COUNT(*) AS c FROM timetable").iloc[0]["c"]
+    total_lessons = run_query("SELECT COUNT(*) AS c FROM lessons").iloc[0]["c"]
+
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        st.markdown(
+            f"""
+            <div class="stat-card">
+                <div class="stat-label">👨‍🎓 Total Students</div>
+                <div class="stat-val">{total_students}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with k2:
+        st.markdown(
+            f"""
+            <div class="stat-card">
+                <div class="stat-label">👨‍🏫 Faculty Teachers</div>
+                <div class="stat-val">{total_teachers}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with k3:
+        st.markdown(
+            f"""
+            <div class="stat-card">
+                <div class="stat-label">📅 Scheduled Classes</div>
+                <div class="stat-val">{total_schedules}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with k4:
+        st.markdown(
+            f"""
+            <div class="stat-card">
+                <div class="stat-label">📖 Active Lessons</div>
+                <div class="stat-val">{total_lessons}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+    chart_c1, chart_c2 = st.columns(2)
+    with chart_c1:
+        st.markdown("##### 📊 အတန်းတက် / ပျက် / ခွင့် နှုန်းထား")
+        att_stat_df = run_query(
+            """
+            SELECT status AS "အခြေအနေ", COUNT(*) AS "ဦးရေ"
+            FROM attendance
+            GROUP BY status
+            ORDER BY status
+            """
+        )
+        if not att_stat_df.empty:
+            st.bar_chart(att_stat_df.set_index("အခြေအနေ"), use_container_width=True)
+        else:
+            st.info("ကျောင်းခေါ်ချိန် မှတ်တမ်းများ မရှိသေးပါ။")
+
+    with chart_c2:
+        st.markdown("##### 👨‍🏫 ဆရာ/မ တစ်ဦးချင်း သင်ကြားချိန်")
+        teach_hours_q = """
+            SELECT teacher AS "Teacher", COUNT(*) AS "စာသင်ချိန်_အရေအတွက်"
+            FROM
+            (
+                SELECT teacher_name AS teacher FROM timetable WHERE teacher_name IS NOT NULL
+                UNION ALL
+                SELECT assistant_1 AS teacher FROM timetable WHERE assistant_1 IS NOT NULL
+                UNION ALL
+                SELECT assistant_2 AS teacher FROM timetable WHERE assistant_2 IS NOT NULL
+            ) AS teacher_data
+            GROUP BY teacher
+            ORDER BY COUNT(*) DESC
+        """
+        teach_stat_df = run_query(teach_hours_q)
+        if not teach_stat_df.empty:
+            st.bar_chart(teach_stat_df.set_index("Teacher"), use_container_width=True)
+        else:
+            st.info("အချိန်ဇယား အချက်အလက်များ မရှိသေးပါ။")
+
+    st.markdown("---")
+    chart_c3, chart_c4 = st.columns(2)
+    with chart_c3:
+        st.markdown("##### 🏫 သင်ကြားမှု စနစ်အလိုက် ကျောင်းသား အင်အား")
+        class_dist_df = run_query(
+            """
+            SELECT class_type AS "Class_Type", COUNT(*) AS "ကျောင်းသားဦးရေ"
+            FROM students
+            GROUP BY class_type
+            ORDER BY class_type
+            """
+        )
+        if not class_dist_df.empty:
+            st.bar_chart(class_dist_df.set_index("Class_Type"), use_container_width=True)
+        else:
+            st.info("ကျောင်းသားစာရင်း မရှိသေးပါ။")
+
+    with chart_c4:
+        st.markdown("##### 📖 Level အလိုက် သင်ခန်းစာ အရေအတွက်")
+        lsn_dist_df = run_query(
+            """
+            SELECT level AS "Level", COUNT(*) AS "သင်ခန်းစာ အရေအတွက်"
+            FROM lessons
+            GROUP BY level
+            ORDER BY level
+            """
+        )
+        if not lsn_dist_df.empty:
+            st.bar_chart(lsn_dist_df.set_index("Level"), use_container_width=True)
+        else:
+            st.info("သင်ခန်းစာ စာရင်း မရှိသေးပါ။")
+
+# =========================================================
+# VIEW 9: USER MANAGEMENT (ADMIN)
+# =========================================================
+elif selected_menu == "🔐 User Account စီမံရန်":
+    st.subheader("🔐 User Account စီမံခန့်ခွဲမှု")
+    st.info(
+        "Admin သည် Admin / Teacher account အသစ်များ ဖန်တီးနိုင်ပြီး account ကို Active/Inactive "
+        "ပြုလုပ်နိုင်ပါသည်။ Password များကို database ထဲတွင် plain text မသိမ်းပါ။"
+    )
+
+    with st.form("create_user_form", clear_on_submit=True):
+        u1, u2 = st.columns(2)
+        with u1:
+            new_username = st.text_input("Username")
+            new_role = st.selectbox("Role", ["Teacher", "Admin"])
+        with u2:
+            new_password = st.text_input("Password", type="password")
+            new_password2 = st.text_input("Confirm Password", type="password")
+
+        if st.form_submit_button("➕ User Account ဖန်တီးမည်", type="primary", use_container_width=True):
+            if not new_username.strip() or not new_password:
+                st.warning("Username နှင့် Password ဖြည့်ပေးပါ။")
+            elif new_password != new_password2:
+                st.error("Password နှစ်ခု မတူပါ။")
+            elif len(new_password) < 8:
+                st.error("Password သည် အနည်းဆုံး 8 characters ရှိရပါမည်။")
+            else:
+                try:
+                    execute_query(
+                        """
+                        INSERT INTO users (username, password_hash, role)
+                        VALUES (%s,%s,%s)
+                        """,
+                        (new_username.strip(), hash_password(new_password), new_role),
+                    )
+                    run_query.clear()
+                    st.toast(f"✅ {new_role} account အသစ် ဖန်တီးပြီးပါပြီ!", icon="🎉")
+                except psycopg2.IntegrityError:
+                    st.error("ဤ Username ရှိပြီးသား ဖြစ်နေပါသည်။")
+
+    st.markdown("---")
+    users_df = run_query(
+        """
+        SELECT id, username, role, active, created_at
+        FROM users
+        ORDER BY role, username
+        """
+    )
+
+    if not users_df.empty:
+        st.dataframe(users_df, use_container_width=True, hide_index=True)
+        user_ids = users_df["id"].tolist()
+        selected_user_id = st.selectbox("ပြောင်းလဲလိုသော User ID", user_ids, key="selected_user_id")
+        selected_user = users_df[users_df["id"] == selected_user_id].iloc[0]
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🔄 Active / Inactive ပြောင်းမည်", use_container_width=True):
+                new_active = not bool(selected_user["active"])
+                execute_query(
+                    "UPDATE users SET active = %s WHERE id = %s",
+                    (new_active, int(selected_user_id)),
+                )
+                run_query.clear()
+                st.toast("✅ Account Active/Inactive ပြောင်းလဲပြီးပါပြီ!", icon="🎉")
+                st.rerun()
+
+        with c2:
+            reset_password = st.text_input("Password အသစ်", type="password", key="reset_password")
+            if st.button("🔑 Password ပြောင်းမည်", use_container_width=True):
+                if len(reset_password) < 8:
+                    st.error("Password သည် အနည်းဆုံး 8 characters ရှိရပါမည်။")
+                else:
+                    execute_query(
+                        "UPDATE users SET password_hash = %s WHERE id = %s",
+                        (hash_password(reset_password), int(selected_user_id)),
+                    )
+                    run_query.clear()
+                    st.toast("✅ Password ပြောင်းလဲပြီးပါပြီ!", icon="🎉")

@@ -19,7 +19,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# CUSTOM CSS (HEADER TOGGLE SAFE)
+# CUSTOM CSS (DARK & LIGHT MODE ADAPTIVE)
 # =========================================================
 st.markdown(
     """
@@ -40,26 +40,13 @@ html, body, [class*="css"] {
     font-family: 'Plus Jakarta Sans', 'Padauk', sans-serif;
 }
 
-.stApp {
-    background: linear-gradient(
-        135deg,
-        #f8fafc 0%,
-        #ecfdf5 50%,
-        #f0fdf4 100%
-    );
-    color: #0f172a;
-}
-
+/* Titles with High Contrast */
 .brand-title-large {
     font-family: 'Cinzel', serif;
     font-size: 2.5rem;
     font-weight: 900;
     letter-spacing: 2px;
-    background: linear-gradient(
-        120deg,
-        #059669 0%,
-        #10b981 100%
-    );
+    background: linear-gradient(120deg, #10b981 0%, #34d399 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-top: 10px;
@@ -71,7 +58,7 @@ html, body, [class*="css"] {
 .brand-subtitle-large {
     font-size: 1.25rem;
     font-weight: 800;
-    color: #1e293b;
+    color: var(--text-color, #10b981);
     letter-spacing: 2px;
     text-transform: uppercase;
     margin-bottom: 8px;
@@ -80,8 +67,8 @@ html, body, [class*="css"] {
 
 .app-badge-large {
     display: inline-block;
-    background: #d1fae5;
-    color: #065f46;
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
     font-size: 0.88rem;
     font-weight: 700;
     padding: 6px 18px;
@@ -91,48 +78,49 @@ html, body, [class*="css"] {
     margin-bottom: 20px;
 }
 
+/* Adaptive Stat Cards */
 .stat-card {
-    background: #ffffff;
-    border: 1.5px solid rgba(16, 185, 129, 0.25);
+    background-color: var(--secondary-background-color, rgba(255, 255, 255, 0.05));
+    border: 1.5px solid rgba(16, 185, 129, 0.35);
     border-radius: 18px;
     padding: 22px;
     text-align: center;
-    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.08);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
     transition: all 0.3s ease;
 }
 
 .stat-card:hover {
     transform: translateY(-4px);
     border-color: #10b981;
-    box-shadow: 0 12px 25px rgba(16, 185, 129, 0.18);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25);
 }
 
 .stat-val {
     font-size: 2.5rem;
     font-weight: 900;
-    color: #059669;
+    color: #10b981;
     margin: 6px 0;
 }
 
 .stat-label {
     font-size: 0.95rem;
     font-weight: 700;
-    color: #64748b;
+    color: var(--text-color, #94a3b8);
 }
 
+/* Tab Bar Colors (Always Visible Text) */
 .stTabs [data-baseweb="tab-list"] {
     gap: 8px;
-    background-color: #ffffff;
+    background-color: var(--secondary-background-color, rgba(16, 185, 129, 0.08));
     padding: 6px;
     border-radius: 14px;
-    border: 1px solid rgba(16, 185, 129, 0.2);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    border: 1px solid rgba(16, 185, 129, 0.25);
     margin-bottom: 1.5rem;
 }
 
 .stTabs [data-baseweb="tab"] {
     border-radius: 10px;
-    color: #64748b;
+    color: var(--text-color, inherit) !important;
     font-weight: 600;
     padding: 8px 18px;
 }
@@ -143,26 +131,20 @@ html, body, [class*="css"] {
     font-weight: 700;
 }
 
-.stTextInput input,
-.stSelectbox select,
-.stDateInput input {
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border-radius: 10px !important;
-    border: 1px solid #cbd5e1 !important;
+.stTabs [data-baseweb="tab"] p {
+    color: inherit !important;
 }
 
+/* Expander Style */
 div[data-testid="stExpander"] {
     border-radius: 14px;
-    border: 1px solid rgba(16, 185, 129, 0.2);
-    background-color: #ffffff;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    background-color: var(--secondary-background-color, transparent);
 }
 </style>
 """,
     unsafe_allow_html=True,
 )
-
 # =========================================================
 # SETTINGS
 # =========================================================

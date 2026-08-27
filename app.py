@@ -166,38 +166,151 @@ if not DATABASE_URL:
 CLASS_TYPES = ["ကိုယ်ပိုင်ကျောင်းများ", "On Campus", "Zoom Online"]
 
 # =========================================================
-# DATABASE CONNECTION POOLING & CACHING
+# DATABASE CONNECTION POOLING & AUTO-RECONNECT
 # =========================================================
 @st.cache_resource
 def get_db_pool():
-    return ThreadedConnectionPool(minconn=1, maxconn=10, dsn=DATABASE_URL)
+    return ThreadedConnectionPool(
+        minconn=1,
+        maxconn=10,
+        dsn=DATABASE_URL,
+    )
 
 def get_conn():
-    return get_db_pool().getconn()
+    """
+    Get a healthy PostgreSQL connection from the pool.
 
-def release_conn(conn):
-    get_db_pool().putconn(conn)
+    Streamlit Cloud apps can stay open while a PostgreSQL connection
+    becomes stale after a period of inactivity.  Test the connection
+    before returning it so stale connections are discarded automatically.
+    """
+    pool = get_db_pool()
+    conn = pool.getconn()
+
+    try:
+        if conn.closed:
+            pool.putconn(conn, close=True)
+            conn = pool.getconn()
+        else:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+        return conn
+
+    except (psycopg2.InterfaceError, psycopg2.OperationalError):
+        try:
+            pool.putconn(conn, close=True)
+        except Exception:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+        # The pool will create a fresh connection when needed.
+        return pool.getconn()
+
+
+def release_conn(conn, broken=False):
+    """Return a connection to the pool, or discard it if broken."""
+    if conn is None:
+        return
+
+    try:
+        get_db_pool().putconn(conn, close=broken)
+    except Exception:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
 
 @st.cache_data(ttl=60, show_spinner=False)
 def run_query(query, params=()):
+    """Run a SELECT query and retry once if an idle connection expired."""
     conn = get_conn()
+
     try:
-        return pd.read_sql_query(query, conn, params=params)
-    finally:
+        result = pd.read_sql_query(query, conn, params=params)
         release_conn(conn)
+        return result
+
+    except (psycopg2.InterfaceError, psycopg2.OperationalError):
+        # Discard the stale connection and retry once with a fresh one.
+        release_conn(conn, broken=True)
+        conn = None
+
+        fresh_conn = get_db_pool().getconn()
+        try:
+            result = pd.read_sql_query(query, fresh_conn, params=params)
+            return result
+        finally:
+            release_conn(fresh_conn)
+
+    except Exception:
+        # SQL errors such as syntax/table/column errors are not connection
+        # errors.  Still discard the current connection to avoid returning
+        # a possibly inconsistent connection to the pool.
+        release_conn(conn, broken=True)
+        raise
+
 
 def execute_query(query, params=()):
+    """
+    Run INSERT/UPDATE/DELETE and retry once for stale PostgreSQL connections.
+    Other SQL errors (for example IntegrityError) are raised normally.
+    """
     conn = get_conn()
+    cur = None
+
     try:
         cur = conn.cursor()
         cur.execute(query, params)
         conn.commit()
+        return
+
+    except (psycopg2.InterfaceError, psycopg2.OperationalError):
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        release_conn(conn, broken=True)
+        conn = None
+
+        # Retry once using a fresh connection.
+        fresh_conn = get_db_pool().getconn()
+        fresh_cur = None
+        try:
+            fresh_cur = fresh_conn.cursor()
+            fresh_cur.execute(query, params)
+            fresh_conn.commit()
+        except Exception:
+            try:
+                fresh_conn.rollback()
+            except Exception:
+                pass
+            raise
+        finally:
+            if fresh_cur is not None:
+                try:
+                    fresh_cur.close()
+                except Exception:
+                    pass
+            release_conn(fresh_conn)
+
     except Exception:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise
+
     finally:
-        cur.close()
-        release_conn(conn)
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        if conn is not None:
+            release_conn(conn)
 
 # =========================================================
 # DATABASE SETUP (ONE-TIME ONLY)
